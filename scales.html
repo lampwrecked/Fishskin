@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>FISH SKIN</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap');
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#05050a;
+  font-family:'Space Mono',monospace;
+  height:100dvh;
+  display:flex; flex-direction:column;
+  overflow:hidden;
+  touch-action:none;
+  user-select:none; -webkit-user-select:none;
+  color:#6878a0;
+}
+#header {
+  display:flex; flex-direction:column;
+  padding:6px 11px 5px;
+  border-bottom:1px solid rgba(255,255,255,0.05);
+  flex-shrink:0; gap:5px;
+}
+#header-top {
+  display:flex; align-items:center; gap:8px;
+}
+#header-btns {
+  display:flex; align-items:center; gap:6px;
+}
+#title {
+  font-family:'Bebas Neue',sans-serif; font-size:22px;
+  letter-spacing:0.14em; color:#b0bcd0; flex-shrink:0;
+}
+#bpm-area { display:flex; align-items:center; gap:5px; font-size:8px; letter-spacing:0.1em; margin-left:auto; }
+#bpm-val { font-family:'Bebas Neue',sans-serif; font-size:17px; color:#b0bcd0; min-width:30px; }
+#bpm-slider {
+  -webkit-appearance:none; width:70px; height:2px;
+  background:rgba(255,255,255,0.1); outline:none; border-radius:2px;
+}
+#bpm-slider::-webkit-slider-thumb {
+  -webkit-appearance:none; width:10px; height:10px;
+  border-radius:50%; background:#b0bcd0; cursor:pointer;
+}
+.btn {
+  font-family:'Space Mono',monospace; font-size:8px; letter-spacing:0.1em;
+  padding:5px 11px; border:1px solid rgba(255,255,255,0.13);
+  background:transparent; color:#5a6882; cursor:pointer;
+  text-transform:uppercase; border-radius:2px;
+  -webkit-tap-highlight-color:transparent; flex-shrink:0;
+}
+.btn.on { color:#00e5cc; border-color:#00e5cc; }
+.btn.sil { color:#ff4455; border-color:#ff4455; background:rgba(255,68,85,0.08); }
+.btn.rnd { color:#ffaa00; border-color:#ffaa00; }
+#dice-btn {
+  width:32px; height:28px; padding:0;
+  display:flex; align-items:center; justify-content:center;
+  border:1px solid rgba(255,255,255,0.13);
+  background:transparent; cursor:pointer; border-radius:3px;
+  -webkit-tap-highlight-color:transparent; flex-shrink:0;
+  transition: border-color 0.15s;
+}
+#dice-btn.rnd { border-color:#ffaa00; }
+#dice-btn.rnd svg circle { fill:#ffaa00; }
+#dice-btn.rnd svg rect { stroke:#ffaa00; }
+#dice-btn svg { display:block; }
+
+/* Phase strip */
+#phase-wrap {
+  height:32px; background:#06060c;
+  border-bottom:1px solid rgba(255,255,255,0.04);
+  flex-shrink:0; position:relative; overflow:hidden;
+}
+#phase-cv { position:absolute; inset:0; width:100%; height:100%; }
+
+/* Legend */
+#legend {
+  display:flex; gap:9px; padding:3px 11px;
+  font-size:6.5px; letter-spacing:0.1em;
+  color:rgba(255,255,255,0.18); flex-shrink:0;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+  align-items:center;
+}
+.ld { display:flex; align-items:center; gap:3px; }
+.ldot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+
+/* Grid */
+#grid { flex:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; position:relative; }
+#pcv { position:fixed; inset:0; pointer-events:none; z-index:10; }
+
+/* Row */
+.row { border-bottom:1px solid rgba(255,255,255,0.03); }
+.rlbl {
+  font-size:6.5px; letter-spacing:0.12em; color:rgba(255,255,255,0.18);
+  text-transform:uppercase; padding:3px 10px 1px;
+}
+.rscales {
+  display:flex; flex-wrap:nowrap; overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:2px 5px 3px; gap:0;
+  scrollbar-width:none;
+}
+.rscales::-webkit-scrollbar { display:none; }
+
+/* Scale */
+.sc { flex-shrink:0; position:relative; cursor:pointer; -webkit-tap-highlight-color:transparent; }
+.sc svg { display:block; }
+.sclbl {
+  display:block; text-align:center;
+  font-size:5.5px; letter-spacing:0.06em; color:rgba(255,255,255,0.25);
+  pointer-events:none; white-space:nowrap; text-transform:uppercase;
+  padding-bottom:1px;
+}
+
+/* Status */
+#status {
+  padding:3px 11px; font-size:7.5px; letter-spacing:0.1em;
+  border-top:1px solid rgba(255,255,255,0.04);
+  display:flex; justify-content:space-between; flex-shrink:0;
+  color:rgba(255,255,255,0.18);
+}
+#bctr { font-family:'Bebas Neue',sans-serif; font-size:12px; color:#b0bcd0; letter-spacing:0.06em; }
+#qinfo { color:#00e5cc; }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div id="header-top">
+    <div id="title">FISH SKIN</div>
+    <div id="bpm-area">BPM <span id="bpm-val">170</span>
+      <input type="range" id="bpm-slider" min="60" max="220" value="170">
+    </div>
+  </div>
+  <div id="header-btns">
+    <button class="btn" id="pbtn">▶ PLAY</button>
+    <button class="btn" id="silbtn">◼ SILENCE</button>
+    <button id="dice-btn" title="Random">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1.5" y="1.5" width="17" height="17" rx="3" stroke="#5a6882" stroke-width="1.4"/>
+        <circle cx="6" cy="6" r="1.4" fill="#5a6882"/>
+        <circle cx="14" cy="6" r="1.4" fill="#5a6882"/>
+        <circle cx="10" cy="10" r="1.4" fill="#5a6882"/>
+        <circle cx="6" cy="14" r="1.4" fill="#5a6882"/>
+        <circle cx="14" cy="14" r="1.4" fill="#5a6882"/>
+      </svg>
+    </button>
+    <span id="stopbtn" style="cursor:pointer;color:#ff4455;letter-spacing:0.1em;font-size:8px;padding:5px 8px;border:1px solid rgba(255,68,85,0.3);border-radius:2px;" onclick="stopPlay()">■ STOP</span>
+  </div>
+</div>
+
+<div id="phase-wrap"><canvas id="phase-cv"></canvas></div>
+
+<div id="legend">
+  <span class="ld"><span class="ldot" style="background:#b0bcd0"></span>SPARSE</span>
+  <span class="ld"><span class="ldot" style="background:#00e5cc"></span>FULL</span>
+  <span class="ld"><span class="ldot" style="background:#ffaa00"></span>LAYER</span>
+  <span class="ld"><span class="ldot" style="background:#ff00aa"></span>CHAOS</span>
+  <span class="ld"><span class="ldot" style="background:#111118;border:1px solid #2a2a3a"></span>MUTE×2</span>
+  <span class="ld" style="margin-left:auto"><span class="ldot" style="background:#ff4455"></span>SIL=GLOBAL</span>
+</div>
+
+<canvas id="pcv"></canvas>
+<div id="grid"></div>
+
+<div id="status">
+  <span id="bctr">1.1</span>
+  <span id="qinfo">0 PLAYING</span>
+</div>
+
+<script>
+// ═══════════════════ GLOBALS ═══════════════════
+var actx=null, mGain=null;
+var bpm=170, playing=false, globalSilence=false;
+var gStep=0, nextT=0;
+var sTimer=null, bar=1, beat=1;
+var pRAF=null;
+var particles=[];
+var scalePos=[];
+
+var phCv=document.getElementById('phase-cv');
+var phCx=phCv.getContext('2d');
+var pCv=document.getElementById('pcv');
+var pCx=pCv.getContext('2d');
+
+function step16(){ return 60/bpm/4; }
+
+// ═══════════════════ AUDIO ═══════════════════
+async function initAudio(){
+  if(!actx){
+    actx=new(window.AudioContext||window.webkitAudioContext)();
+    mGain=actx.createGain(); mGain.gain.value=0.72;
+    mGain.connect(actx.destination);
+  }
+  if(actx.state==='suspended') await actx.resume();
+}
+function mkNoise(d){
+  var b=actx.createBuffer(1,Math.ceil(actx.sampleRate*d),actx.sampleRate);
+  var a=b.getChannelData(0); for(var i=0;i<a.length;i++) a[i]=Math.random()*2-1; return b;
+}
+function pKick(t,p,ch){ p=p||1;
+  var o=actx.createOscillator(),g=actx.createGain(); o.connect(g); g.connect(mGain);
+  var f=ch?45+Math.random()*35:52*p;
+  o.frequency.setValueAtTime(f*5,t); o.frequency.exponentialRampToValueAtTime(f,t+0.07);
+  g.gain.setValueAtTime(1,t); g.gain.exponentialRampToValueAtTime(0.001,t+(ch?0.28+Math.random()*0.15:0.38));
+  o.start(t); o.stop(t+0.5);
+}
+function pSnare(t,ch){
+  var s=actx.createBufferSource(); s.buffer=mkNoise(0.2);
+  var f=actx.createBiquadFilter(); f.type='bandpass';
+  f.frequency.value=ch?1000+Math.random()*2500:2200; f.Q.value=0.9;
+  var g=actx.createGain(); g.gain.setValueAtTime(0.85,t);
+  g.gain.exponentialRampToValueAtTime(0.001,t+(ch?0.07+Math.random()*0.1:0.16));
+  s.connect(f); f.connect(g); g.connect(mGain); s.start(t); s.stop(t+0.3);
+}
+function pClap(t,ch){
+  for(var i=0;i<3;i++){
+    var s=actx.createBufferSource(); s.buffer=mkNoise(0.05);
+    var f=actx.createBiquadFilter(); f.type='bandpass';
+    f.frequency.value=ch?900+Math.random()*2000:1800; f.Q.value=1.2;
+    var g=actx.createGain(),dl=i*0.012;
+    g.gain.setValueAtTime(0.5,t+dl); g.gain.exponentialRampToValueAtTime(0.001,t+dl+0.08);
+    s.connect(f); f.connect(g); g.connect(mGain); s.start(t+dl); s.stop(t+dl+0.15);
+  }
+}
+function pHat(t,open,ch){
+  var s=actx.createBufferSource(); s.buffer=mkNoise(open?0.18:0.04);
+  var f=actx.createBiquadFilter(); f.type='highpass';
+  f.frequency.value=ch?4000+Math.random()*6000:8000;
+  var dur=open?(ch?0.1+Math.random()*0.18:0.2):0.05;
+  var g=actx.createGain(); g.gain.setValueAtTime(open?0.5:0.32,t);
+  g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  s.connect(f); f.connect(g); g.connect(mGain); s.start(t); s.stop(t+dur+0.05);
+}
+function pRim(t,ch){
+  var o=actx.createOscillator(); o.type='square';
+  o.frequency.value=ch?700+Math.random()*500:920;
+  var g=actx.createGain(); g.gain.setValueAtTime(0.38,t);
+  g.gain.exponentialRampToValueAtTime(0.001,t+0.04);
+  o.connect(g); g.connect(mGain); o.start(t); o.stop(t+0.07);
+}
+function pTom(t,p,ch){ p=p||1;
+  var o=actx.createOscillator(),g=actx.createGain();
+  var f=ch?80+Math.random()*120:100*p;
+  o.frequency.setValueAtTime(f*3,t); o.frequency.exponentialRampToValueAtTime(f,t+0.05);
+  g.gain.setValueAtTime(0.7,t); g.gain.exponentialRampToValueAtTime(0.001,t+(ch?0.15+Math.random()*0.15:0.28));
+  o.connect(g); g.connect(mGain); o.start(t); o.stop(t+0.4);
+}
+function pPerc(t,p,ch){ p=p||1;
+  var o=actx.createOscillator(); o.type='sine';
+  var f=ch?180+Math.random()*600:280*p;
+  o.frequency.setValueAtTime(f*2.2,t); o.frequency.exponentialRampToValueAtTime(f,t+0.03);
+  var g=actx.createGain(); g.gain.setValueAtTime(0.48,t);
+  g.gain.exponentialRampToValueAtTime(0.001,t+0.11);
+  o.connect(g); g.connect(mGain); o.start(t); o.stop(t+0.18);
+}
+function pCow(t,ch){
+  var o1=actx.createOscillator(),o2=actx.createOscillator();
+  o1.frequency.value=ch?400+Math.random()*300:562;
+  o2.frequency.value=ch?600+Math.random()*400:845;
+  var g=actx.createGain(); g.gain.setValueAtTime(0.28,t);
+  g.gain.exponentialRampToValueAtTime(0.001,t+0.2);
+  o1.connect(g); o2.connect(g); g.connect(mGain);
+  o1.start(t); o2.start(t); o1.stop(t+0.28); o2.stop(t+0.28);
+}
+function pCym(t,ch){
+  var s=actx.createBufferSource(); s.buffer=mkNoise(0.5);
+  var f=actx.createBiquadFilter(); f.type='highpass'; f.frequency.value=7000;
+  var g=actx.createGain(); g.gain.setValueAtTime(0.3,t);
+  g.gain.exponentialRampToValueAtTime(0.001,t+(ch?0.2+Math.random()*0.4:0.55));
+  s.connect(f); f.connect(g); g.connect(mGain); s.start(t); s.stop(t+0.8);
+}
+function fireHit(h,t,ch){
+  var ty=h.t,p=h.p||1;
+  if(ty==='kick') pKick(t,p,ch);
+  else if(ty==='snare') pSnare(t,ch);
+  else if(ty==='clap') pClap(t,ch);
+  else if(ty==='hat') pHat(t,false,ch);
+  else if(ty==='ohat') pHat(t,true,ch);
+  else if(ty==='rim') pRim(t,ch);
+  else if(ty==='tom') pTom(t,p,ch);
+  else if(ty==='perc') pPerc(t,p,ch);
+  else if(ty==='cow') pCow(t,ch);
+  else if(ty==='cym') pCym(t,ch);
+}
+
+// ═══════════════════ PATTERNS ═══════════════════
+var ROWS=[
+  { name:'KICK', patterns:[
+    {steps:16,name:'4/4',   sparse:[{s:0,t:'kick'},{s:8,t:'kick'}],                                        full:[{s:0,t:'kick'},{s:4,t:'kick'},{s:8,t:'kick'},{s:12,t:'kick'}],                                                                    layer:[{s:0,t:'kick'},{s:4,t:'kick'},{s:6,t:'kick',p:1.4},{s:8,t:'kick'},{s:11,t:'kick',p:0.7},{s:12,t:'kick'},{s:14,t:'kick',p:0.8}]},
+    {steps:12,name:'3/4',   sparse:[{s:0,t:'kick'},{s:6,t:'kick'}],                                        full:[{s:0,t:'kick'},{s:4,t:'kick'},{s:8,t:'kick'}],                                                                                   layer:[{s:0,t:'kick'},{s:3,t:'kick',p:0.7},{s:4,t:'kick'},{s:8,t:'kick'},{s:10,t:'kick',p:1.3}]},
+    {steps:6, name:'HALF',  sparse:[{s:0,t:'kick'}],                                                       full:[{s:0,t:'kick'},{s:3,t:'kick'}],                                                                                                  layer:[{s:0,t:'kick'},{s:2,t:'kick',p:1.5},{s:3,t:'kick'},{s:5,t:'kick',p:0.7}]},
+    {steps:10,name:'5-STEP',sparse:[{s:0,t:'kick'},{s:5,t:'kick'}],                                        full:[{s:0,t:'kick'},{s:3,t:'kick'},{s:5,t:'kick'},{s:8,t:'kick'}],                                                                    layer:[{s:0,t:'kick'},{s:2,t:'kick',p:1.3},{s:3,t:'kick'},{s:5,t:'kick'},{s:7,t:'kick',p:0.8},{s:9,t:'kick'}]},
+    {steps:7, name:'7-STEP',sparse:[{s:0,t:'kick'},{s:4,t:'kick'}],                                        full:[{s:0,t:'kick'},{s:2,t:'kick'},{s:4,t:'kick'},{s:6,t:'kick'}],                                                                    layer:[{s:0,t:'kick'},{s:1,t:'kick',p:0.6},{s:2,t:'kick'},{s:4,t:'kick'},{s:5,t:'kick',p:1.4},{s:6,t:'kick'}]},
+    {steps:32,name:'2-BAR', sparse:[{s:0,t:'kick'},{s:16,t:'kick'}],                                       full:[{s:0,t:'kick'},{s:8,t:'kick'},{s:16,t:'kick'},{s:24,t:'kick'}],                                                                  layer:[{s:0,t:'kick'},{s:6,t:'kick',p:0.8},{s:8,t:'kick'},{s:12,t:'kick',p:1.4},{s:16,t:'kick'},{s:20,t:'kick'},{s:24,t:'kick'},{s:28,t:'kick',p:0.6}]},
+    {steps:9, name:'9-STEP',sparse:[{s:0,t:'kick'},{s:5,t:'kick'}],                                        full:[{s:0,t:'kick'},{s:3,t:'kick'},{s:6,t:'kick'}],                                                                                   layer:[{s:0,t:'kick'},{s:2,t:'kick',p:0.8},{s:3,t:'kick'},{s:5,t:'kick',p:1.3},{s:6,t:'kick'},{s:8,t:'kick',p:0.7}]},
+  ]},
+  { name:'SNARE', patterns:[
+    {steps:16,name:'2&4',   sparse:[{s:4,t:'snare'},{s:12,t:'snare'}],                                     full:[{s:4,t:'snare'},{s:10,t:'snare'},{s:12,t:'snare'}],                                                                              layer:[{s:2,t:'snare'},{s:4,t:'snare'},{s:9,t:'snare'},{s:10,t:'snare'},{s:12,t:'snare'},{s:15,t:'snare'}]},
+    {steps:16,name:'JUNGLE',sparse:[{s:6,t:'snare'},{s:14,t:'snare'}],                                     full:[{s:3,t:'snare'},{s:6,t:'snare'},{s:11,t:'snare'},{s:14,t:'snare'}],                                                              layer:[{s:1,t:'snare'},{s:3,t:'snare'},{s:6,t:'snare'},{s:9,t:'snare'},{s:11,t:'snare'},{s:13,t:'snare'},{s:14,t:'snare'}]},
+    {steps:12,name:'WALTZ', sparse:[{s:3,t:'snare'},{s:9,t:'snare'}],                                      full:[{s:3,t:'snare'},{s:6,t:'snare'},{s:9,t:'snare'}],                                                                                layer:[{s:1,t:'snare'},{s:3,t:'snare'},{s:5,t:'snare'},{s:9,t:'snare'},{s:11,t:'snare'}]},
+    {steps:9, name:'9-POLY',sparse:[{s:4,t:'snare'},{s:8,t:'snare'}],                                      full:[{s:2,t:'snare'},{s:4,t:'snare'},{s:7,t:'snare'}],                                                                                layer:[{s:1,t:'snare'},{s:2,t:'snare'},{s:4,t:'snare'},{s:6,t:'snare'},{s:8,t:'snare'}]},
+    {steps:5, name:'5-AFRO',sparse:[{s:2,t:'snare'}],                                                      full:[{s:1,t:'snare'},{s:3,t:'snare'}],                                                                                                layer:[{s:0,t:'snare'},{s:2,t:'snare'},{s:4,t:'snare'}]},
+    {steps:13,name:'13-POLY',sparse:[{s:0,t:'snare'},{s:6,t:'snare'},{s:12,t:'snare'}],                    full:[{s:0,t:'snare'},{s:3,t:'snare'},{s:6,t:'snare'},{s:9,t:'snare'},{s:12,t:'snare'}],                                               layer:[{s:0,t:'snare'},{s:2,t:'snare'},{s:4,t:'snare'},{s:6,t:'snare'},{s:8,t:'snare'},{s:10,t:'snare'},{s:12,t:'snare'}]},
+    {steps:7, name:'7-POLY',sparse:[{s:3,t:'snare'},{s:6,t:'snare'}],                                      full:[{s:1,t:'snare'},{s:3,t:'snare'},{s:5,t:'snare'}],                                                                                layer:[{s:0,t:'snare'},{s:2,t:'snare'},{s:3,t:'snare'},{s:5,t:'snare'},{s:6,t:'snare'}]},
+  ]},
+  { name:'CLAP', patterns:[
+    {steps:16,name:'ON 2&4',sparse:[{s:4,t:'clap'},{s:12,t:'clap'}],                                       full:[{s:4,t:'clap'},{s:8,t:'clap'},{s:12,t:'clap'}],                                                                                  layer:[{s:2,t:'clap'},{s:4,t:'clap'},{s:10,t:'clap'},{s:12,t:'clap'},{s:14,t:'clap'}]},
+    {steps:8, name:'HALF',  sparse:[{s:2,t:'clap'},{s:6,t:'clap'}],                                        full:[{s:1,t:'clap'},{s:3,t:'clap'},{s:5,t:'clap'},{s:7,t:'clap'}],                                                                    layer:[{s:0,t:'clap'},{s:2,t:'clap'},{s:3,t:'clap'},{s:5,t:'clap'},{s:7,t:'clap'}]},
+    {steps:6, name:'6-CLAP',sparse:[{s:3,t:'clap'}],                                                       full:[{s:1,t:'clap'},{s:4,t:'clap'}],                                                                                                  layer:[{s:0,t:'clap'},{s:2,t:'clap'},{s:4,t:'clap'},{s:5,t:'clap'}]},
+    {steps:11,name:'11-POLY',sparse:[{s:0,t:'clap'},{s:5,t:'clap'}],                                       full:[{s:0,t:'clap'},{s:3,t:'clap'},{s:5,t:'clap'},{s:8,t:'clap'}],                                                                    layer:[{s:0,t:'clap'},{s:2,t:'clap'},{s:4,t:'clap'},{s:6,t:'clap'},{s:8,t:'clap'},{s:10,t:'clap'}]},
+    {steps:20,name:'LONG',  sparse:[{s:0,t:'clap'},{s:10,t:'clap'}],                                       full:[{s:5,t:'clap'},{s:10,t:'clap'},{s:15,t:'clap'}],                                                                                 layer:[{s:0,t:'clap'},{s:4,t:'clap'},{s:8,t:'clap'},{s:12,t:'clap'},{s:16,t:'clap'}]},
+  ]},
+  { name:'HI-HAT', patterns:[
+    {steps:16,name:'8TH',   sparse:[{s:0,t:'hat'},{s:4,t:'hat'},{s:8,t:'hat'},{s:12,t:'hat'}],             full:[{s:0,t:'hat'},{s:2,t:'hat'},{s:4,t:'hat'},{s:6,t:'hat'},{s:8,t:'hat'},{s:10,t:'hat'},{s:12,t:'hat'},{s:14,t:'hat'}],             layer:[{s:0,t:'hat'},{s:1,t:'hat'},{s:2,t:'hat'},{s:4,t:'hat'},{s:5,t:'hat'},{s:6,t:'hat'},{s:8,t:'hat'},{s:9,t:'hat'},{s:10,t:'hat'},{s:12,t:'hat'},{s:13,t:'hat'},{s:14,t:'hat'},{s:15,t:'hat'}]},
+    {steps:12,name:'TRIPL', sparse:[{s:0,t:'hat'},{s:3,t:'hat'},{s:6,t:'hat'},{s:9,t:'hat'}],              full:[{s:0,t:'hat'},{s:2,t:'hat'},{s:4,t:'hat'},{s:6,t:'hat'},{s:8,t:'hat'},{s:10,t:'hat'}],                                           layer:[{s:0,t:'hat'},{s:1,t:'hat'},{s:2,t:'hat'},{s:4,t:'hat'},{s:5,t:'hat'},{s:6,t:'hat'},{s:8,t:'hat'},{s:9,t:'hat'},{s:10,t:'hat'}]},
+    {steps:7, name:'7-HAT', sparse:[{s:0,t:'hat'},{s:2,t:'hat'},{s:4,t:'hat'}],                            full:[{s:0,t:'hat'},{s:1,t:'hat'},{s:2,t:'hat'},{s:3,t:'hat'},{s:5,t:'hat'},{s:6,t:'hat'}],                                            layer:[{s:0,t:'hat'},{s:1,t:'hat'},{s:2,t:'hat'},{s:3,t:'hat'},{s:4,t:'hat'},{s:5,t:'hat'},{s:6,t:'hat'}]},
+    {steps:5, name:'QUINT', sparse:[{s:0,t:'hat'},{s:2,t:'hat'}],                                          full:[{s:0,t:'hat'},{s:1,t:'hat'},{s:2,t:'hat'},{s:4,t:'hat'}],                                                                        layer:[{s:0,t:'hat'},{s:1,t:'hat'},{s:2,t:'hat'},{s:3,t:'hat'},{s:4,t:'hat'}]},
+    {steps:9, name:'9-HAT', sparse:[{s:0,t:'hat'},{s:3,t:'hat'},{s:6,t:'hat'}],                            full:[{s:0,t:'hat'},{s:2,t:'hat'},{s:4,t:'hat'},{s:6,t:'hat'},{s:8,t:'hat'}],                                                          layer:[{s:0,t:'hat'},{s:1,t:'hat'},{s:3,t:'hat'},{s:4,t:'hat'},{s:6,t:'hat'},{s:7,t:'hat'},{s:8,t:'hat'}]},
+    {steps:14,name:'14-DNB',sparse:[{s:0,t:'hat'},{s:7,t:'hat'}],                                          full:[{s:0,t:'hat'},{s:2,t:'hat'},{s:4,t:'hat'},{s:7,t:'hat'},{s:9,t:'hat'},{s:11,t:'hat'}],                                            layer:[{s:0,t:'hat'},{s:1,t:'hat'},{s:2,t:'hat'},{s:4,t:'hat'},{s:5,t:'hat'},{s:7,t:'hat'},{s:8,t:'hat'},{s:9,t:'hat'},{s:11,t:'hat'},{s:13,t:'hat'}]},
+    {steps:3, name:'MICRO', sparse:[{s:0,t:'hat'}],                                                        full:[{s:0,t:'hat'},{s:2,t:'hat'}],                                                                                                    layer:[{s:0,t:'hat'},{s:1,t:'hat'},{s:2,t:'hat'}]},
+  ]},
+  { name:'OPEN HAT', patterns:[
+    {steps:16,name:'BKBT',  sparse:[{s:4,t:'ohat'},{s:12,t:'ohat'}],                                       full:[{s:2,t:'ohat'},{s:6,t:'ohat'},{s:10,t:'ohat'},{s:14,t:'ohat'}],                                                                  layer:[{s:1,t:'ohat'},{s:3,t:'ohat'},{s:7,t:'ohat'},{s:9,t:'ohat'},{s:13,t:'ohat'},{s:15,t:'ohat'}]},
+    {steps:8, name:'HALF',  sparse:[{s:4,t:'ohat'}],                                                       full:[{s:2,t:'ohat'},{s:6,t:'ohat'}],                                                                                                  layer:[{s:1,t:'ohat'},{s:3,t:'ohat'},{s:5,t:'ohat'},{s:7,t:'ohat'}]},
+    {steps:6, name:'6-OPEN',sparse:[{s:3,t:'ohat'}],                                                       full:[{s:2,t:'ohat'},{s:5,t:'ohat'}],                                                                                                  layer:[{s:1,t:'ohat'},{s:3,t:'ohat'},{s:5,t:'ohat'}]},
+    {steps:11,name:'11',    sparse:[{s:5,t:'ohat'}],                                                       full:[{s:2,t:'ohat'},{s:6,t:'ohat'},{s:10,t:'ohat'}],                                                                                  layer:[{s:1,t:'ohat'},{s:3,t:'ohat'},{s:6,t:'ohat'},{s:8,t:'ohat'},{s:10,t:'ohat'}]},
+    {steps:3, name:'3',     sparse:[{s:1,t:'ohat'}],                                                       full:[{s:0,t:'ohat'},{s:2,t:'ohat'}],                                                                                                  layer:[{s:0,t:'ohat'},{s:1,t:'ohat'},{s:2,t:'ohat'}]},
+    {steps:13,name:'13',    sparse:[{s:6,t:'ohat'}],                                                       full:[{s:3,t:'ohat'},{s:8,t:'ohat'}],                                                                                                  layer:[{s:1,t:'ohat'},{s:4,t:'ohat'},{s:7,t:'ohat'},{s:10,t:'ohat'},{s:12,t:'ohat'}]},
+  ]},
+  { name:'RIM', patterns:[
+    {steps:16,name:'SIDE',  sparse:[{s:2,t:'rim'},{s:10,t:'rim'}],                                         full:[{s:2,t:'rim'},{s:6,t:'rim'},{s:10,t:'rim'},{s:14,t:'rim'}],                                                                      layer:[{s:1,t:'rim'},{s:2,t:'rim'},{s:5,t:'rim'},{s:6,t:'rim'},{s:9,t:'rim'},{s:10,t:'rim'},{s:13,t:'rim'},{s:14,t:'rim'}]},
+    {steps:7, name:'TRESL', sparse:[{s:0,t:'rim'},{s:3,t:'rim'}],                                          full:[{s:0,t:'rim'},{s:2,t:'rim'},{s:4,t:'rim'},{s:6,t:'rim'}],                                                                        layer:[{s:0,t:'rim'},{s:1,t:'rim'},{s:2,t:'rim'},{s:4,t:'rim'},{s:5,t:'rim'},{s:6,t:'rim'}]},
+    {steps:3, name:'3-RIM', sparse:[{s:1,t:'rim'}],                                                        full:[{s:0,t:'rim'},{s:2,t:'rim'}],                                                                                                    layer:[{s:0,t:'rim'},{s:1,t:'rim'},{s:2,t:'rim'}]},
+    {steps:5, name:'CLAVE', sparse:[{s:0,t:'rim'},{s:3,t:'rim'}],                                          full:[{s:0,t:'rim'},{s:1,t:'rim'},{s:3,t:'rim'}],                                                                                      layer:[{s:0,t:'rim'},{s:1,t:'rim'},{s:2,t:'rim'},{s:3,t:'rim'},{s:4,t:'rim'}]},
+    {steps:9, name:'9-RIM', sparse:[{s:0,t:'rim'},{s:5,t:'rim'}],                                          full:[{s:0,t:'rim'},{s:3,t:'rim'},{s:5,t:'rim'},{s:8,t:'rim'}],                                                                        layer:[{s:0,t:'rim'},{s:2,t:'rim'},{s:3,t:'rim'},{s:5,t:'rim'},{s:6,t:'rim'},{s:8,t:'rim'}]},
+    {steps:16,name:'GHOST', sparse:[{s:8,t:'rim'}],                                                        full:[{s:4,t:'rim'},{s:8,t:'rim'},{s:12,t:'rim'}],                                                                                     layer:[{s:1,t:'rim'},{s:3,t:'rim'},{s:5,t:'rim'},{s:7,t:'rim'},{s:9,t:'rim'},{s:11,t:'rim'},{s:13,t:'rim'},{s:15,t:'rim'}]},
+    {steps:11,name:'11-RIM',sparse:[{s:0,t:'rim'},{s:6,t:'rim'}],                                          full:[{s:0,t:'rim'},{s:4,t:'rim'},{s:7,t:'rim'}],                                                                                      layer:[{s:0,t:'rim'},{s:2,t:'rim'},{s:4,t:'rim'},{s:6,t:'rim'},{s:8,t:'rim'},{s:10,t:'rim'}]},
+  ]},
+  { name:'TOM', patterns:[
+    {steps:16,name:'FILL',  sparse:[{s:12,t:'tom',p:1},{s:14,t:'tom',p:1.4}],                              full:[{s:8,t:'tom',p:0.8},{s:10,t:'tom',p:1},{s:12,t:'tom',p:1.2},{s:14,t:'tom',p:1.5}],                                               layer:[{s:4,t:'tom',p:0.7},{s:6,t:'tom',p:0.9},{s:8,t:'tom',p:0.8},{s:10,t:'tom',p:1},{s:12,t:'tom',p:1.2},{s:14,t:'tom',p:1.5},{s:15,t:'tom',p:0.6}]},
+    {steps:8, name:'ROLL',  sparse:[{s:0,t:'tom',p:1},{s:4,t:'tom',p:1.5}],                                full:[{s:0,t:'tom',p:0.8},{s:2,t:'tom',p:1},{s:4,t:'tom',p:1.3},{s:6,t:'tom',p:1.6}],                                                 layer:[{s:0,t:'tom',p:0.7},{s:1,t:'tom',p:0.9},{s:2,t:'tom',p:1},{s:3,t:'tom',p:1.1},{s:4,t:'tom',p:1.2},{s:5,t:'tom',p:1.4},{s:6,t:'tom',p:1.5},{s:7,t:'tom',p:1.7}]},
+    {steps:12,name:'3/4',   sparse:[{s:0,t:'tom',p:1},{s:6,t:'tom',p:1.3}],                                full:[{s:0,t:'tom',p:1},{s:4,t:'tom',p:0.8},{s:8,t:'tom',p:1.4}],                                                                     layer:[{s:0,t:'tom',p:1},{s:2,t:'tom',p:0.7},{s:4,t:'tom',p:0.9},{s:6,t:'tom',p:1.3},{s:9,t:'tom',p:1.1},{s:11,t:'tom',p:1.5}]},
+    {steps:5, name:'5-TOM', sparse:[{s:0,t:'tom',p:1}],                                                    full:[{s:0,t:'tom',p:1},{s:2,t:'tom',p:1.4},{s:4,t:'tom',p:0.8}],                                                                     layer:[{s:0,t:'tom',p:1},{s:1,t:'tom',p:1.3},{s:2,t:'tom',p:1.4},{s:3,t:'tom',p:0.9},{s:4,t:'tom',p:0.8}]},
+    {steps:7, name:'7-TOM', sparse:[{s:0,t:'tom',p:1},{s:4,t:'tom',p:1.4}],                                full:[{s:0,t:'tom',p:1},{s:2,t:'tom',p:0.8},{s:4,t:'tom',p:1.4},{s:6,t:'tom',p:1.2}],                                                 layer:[{s:0,t:'tom',p:1},{s:1,t:'tom',p:0.6},{s:2,t:'tom',p:0.8},{s:3,t:'tom',p:1.1},{s:4,t:'tom',p:1.4},{s:5,t:'tom',p:1.6},{s:6,t:'tom',p:1.2}]},
+  ]},
+  { name:'PERC', patterns:[
+    {steps:16,name:'DRUKQS',sparse:[{s:0,t:'perc',p:1},{s:5,t:'perc',p:1.5},{s:11,t:'perc',p:0.8}],       full:[{s:0,t:'perc',p:1},{s:3,t:'perc',p:1.3},{s:5,t:'perc',p:1.5},{s:8,t:'perc',p:0.8},{s:11,t:'perc',p:1.2},{s:14,t:'perc',p:0.7}], layer:[{s:0,t:'perc',p:1},{s:2,t:'perc',p:1.8},{s:3,t:'perc',p:0.6},{s:5,t:'perc',p:1.5},{s:7,t:'perc',p:1.2},{s:8,t:'perc',p:0.8},{s:10,t:'perc',p:2},{s:11,t:'perc',p:1.2},{s:13,t:'perc',p:0.7},{s:15,t:'perc',p:1.4}]},
+    {steps:5, name:'PENTA', sparse:[{s:0,t:'perc',p:1},{s:3,t:'perc',p:1.5}],                             full:[{s:0,t:'perc',p:1},{s:1,t:'perc',p:1.2},{s:3,t:'perc',p:1.5},{s:4,t:'perc',p:0.9}],                                              layer:[{s:0,t:'perc',p:1},{s:1,t:'perc',p:1.2},{s:2,t:'perc',p:1.7},{s:3,t:'perc',p:1.5},{s:4,t:'perc',p:0.9}]},
+    {steps:11,name:'11',    sparse:[{s:0,t:'perc',p:1},{s:5,t:'perc',p:1.8}],                             full:[{s:0,t:'perc',p:1},{s:3,t:'perc',p:0.7},{s:5,t:'perc',p:1.8},{s:8,t:'perc',p:1.3}],                                              layer:[{s:0,t:'perc',p:1},{s:2,t:'perc',p:1.4},{s:3,t:'perc',p:0.7},{s:5,t:'perc',p:1.8},{s:6,t:'perc',p:0.6},{s:8,t:'perc',p:1.3},{s:10,t:'perc',p:2}]},
+    {steps:6, name:'6',     sparse:[{s:0,t:'perc',p:1},{s:4,t:'perc',p:1.3}],                             full:[{s:0,t:'perc',p:1},{s:2,t:'perc',p:1.6},{s:4,t:'perc',p:1.3}],                                                                   layer:[{s:0,t:'perc',p:1},{s:1,t:'perc',p:0.8},{s:2,t:'perc',p:1.6},{s:3,t:'perc',p:2},{s:4,t:'perc',p:1.3},{s:5,t:'perc',p:0.9}]},
+    {steps:13,name:'13',    sparse:[{s:0,t:'perc',p:1},{s:6,t:'perc',p:1.4},{s:12,t:'perc',p:0.8}],       full:[{s:0,t:'perc',p:1},{s:4,t:'perc',p:1.4},{s:7,t:'perc',p:0.8},{s:10,t:'perc',p:1.7}],                                            layer:[{s:0,t:'perc',p:1},{s:2,t:'perc',p:1.6},{s:4,t:'perc',p:1.4},{s:6,t:'perc',p:0.8},{s:7,t:'perc',p:1.9},{s:9,t:'perc',p:1.2},{s:10,t:'perc',p:1.7},{s:12,t:'perc',p:0.6}]},
+    {steps:3, name:'3',     sparse:[{s:0,t:'perc',p:1}],                                                   full:[{s:0,t:'perc',p:1},{s:2,t:'perc',p:1.5}],                                                                                        layer:[{s:0,t:'perc',p:1},{s:1,t:'perc',p:1.8},{s:2,t:'perc',p:1.5}]},
+  ]},
+  { name:'COWBELL', patterns:[
+    {steps:16,name:'MORE',  sparse:[{s:8,t:'cow'}],                                                        full:[{s:4,t:'cow'},{s:12,t:'cow'}],                                                                                                   layer:[{s:0,t:'cow'},{s:4,t:'cow'},{s:8,t:'cow'},{s:12,t:'cow'}]},
+    {steps:3, name:'3',     sparse:[{s:0,t:'cow'}],                                                        full:[{s:0,t:'cow'},{s:2,t:'cow'}],                                                                                                    layer:[{s:0,t:'cow'},{s:1,t:'cow'},{s:2,t:'cow'}]},
+    {steps:7, name:'7',     sparse:[{s:0,t:'cow'},{s:4,t:'cow'}],                                          full:[{s:0,t:'cow'},{s:2,t:'cow'},{s:4,t:'cow'},{s:6,t:'cow'}],                                                                        layer:[{s:0,t:'cow'},{s:1,t:'cow'},{s:3,t:'cow'},{s:4,t:'cow'},{s:5,t:'cow'},{s:6,t:'cow'}]},
+    {steps:10,name:'10',    sparse:[{s:0,t:'cow'},{s:5,t:'cow'}],                                          full:[{s:0,t:'cow'},{s:3,t:'cow'},{s:5,t:'cow'},{s:8,t:'cow'}],                                                                        layer:[{s:0,t:'cow'},{s:2,t:'cow'},{s:3,t:'cow'},{s:5,t:'cow'},{s:7,t:'cow'},{s:8,t:'cow'},{s:9,t:'cow'}]},
+    {steps:5, name:'5',     sparse:[{s:2,t:'cow'}],                                                        full:[{s:0,t:'cow'},{s:3,t:'cow'}],                                                                                                    layer:[{s:0,t:'cow'},{s:2,t:'cow'},{s:3,t:'cow'},{s:4,t:'cow'}]},
+  ]},
+  { name:'CYMBAL', patterns:[
+    {steps:16,name:'CRASH', sparse:[{s:0,t:'cym'}],                                                        full:[{s:0,t:'cym'},{s:8,t:'cym'}],                                                                                                    layer:[{s:0,t:'cym'},{s:4,t:'cym'},{s:8,t:'cym'},{s:12,t:'cym'}]},
+    {steps:8, name:'RIDE',  sparse:[{s:0,t:'cym'},{s:4,t:'cym'}],                                          full:[{s:0,t:'cym'},{s:2,t:'cym'},{s:4,t:'cym'},{s:6,t:'cym'}],                                                                        layer:[{s:0,t:'cym'},{s:1,t:'cym'},{s:2,t:'cym'},{s:4,t:'cym'},{s:5,t:'cym'},{s:6,t:'cym'}]},
+    {steps:6, name:'6',     sparse:[{s:0,t:'cym'},{s:3,t:'cym'}],                                          full:[{s:0,t:'cym'},{s:2,t:'cym'},{s:4,t:'cym'}],                                                                                      layer:[{s:0,t:'cym'},{s:1,t:'cym'},{s:2,t:'cym'},{s:3,t:'cym'},{s:5,t:'cym'}]},
+    {steps:11,name:'11',    sparse:[{s:0,t:'cym'},{s:6,t:'cym'}],                                          full:[{s:0,t:'cym'},{s:4,t:'cym'},{s:7,t:'cym'}],                                                                                      layer:[{s:0,t:'cym'},{s:2,t:'cym'},{s:4,t:'cym'},{s:6,t:'cym'},{s:9,t:'cym'},{s:10,t:'cym'}]},
+    {steps:24,name:'2-BAR', sparse:[{s:0,t:'cym'},{s:12,t:'cym'}],                                         full:[{s:0,t:'cym'},{s:6,t:'cym'},{s:12,t:'cym'},{s:18,t:'cym'}],                                                                      layer:[{s:0,t:'cym'},{s:3,t:'cym'},{s:6,t:'cym'},{s:9,t:'cym'},{s:12,t:'cym'},{s:15,t:'cym'},{s:18,t:'cym'},{s:21,t:'cym'}]},
+    {steps:3, name:'3',     sparse:[{s:0,t:'cym'}],                                                        full:[{s:0,t:'cym'},{s:2,t:'cym'}],                                                                                                    layer:[{s:0,t:'cym'},{s:1,t:'cym'},{s:2,t:'cym'}]},
+  ]},
+];
+
+// ═══════════════════ SCALE OBJECTS ═══════════════════
+var allScales=[];
+ROWS.forEach(function(row,ri){
+  row.patterns.forEach(function(pat,pi){
+    allScales.push({
+      id:allScales.length, rowIdx:ri, patIdx:pi, pattern:pat,
+      state:0, active:false, queued:false, muted:false,
+      cycleStep:0, chaos:null, el:null, lastTap:0
+    });
+  });
+});
+
+function getHits(sc){
+  var p=sc.pattern;
+  if(sc.state===0) return p.sparse;
+  if(sc.state===1) return p.full;
+  if(sc.state===2) return p.layer;
+  if(sc.state===3){ if(!sc.chaos) sc.chaos=genChaos(p); return sc.chaos; }
+  return [];
+}
+function genChaos(pat){
+  var types=['kick','snare','hat','rim','perc','clap','ohat','tom'];
+  var cnt=3+Math.floor(Math.random()*(pat.steps-1)), used={}, hits=[];
+  for(var i=0;i<cnt;i++){
+    var s,att=0; do{ s=Math.floor(Math.random()*pat.steps); att++; }while(used[s]&&att<30);
+    used[s]=1; hits.push({s:s,t:types[Math.floor(Math.random()*types.length)],p:0.5+Math.random()*1.5});
+  }
+  return hits.sort(function(a,b){return a.s-b.s;});
+}
+
+// ═══════════════════ SCHEDULER ═══════════════════
+var curScIdx=0;
+function scheduler(){
+  var now=actx.currentTime;
+  while(nextT < now+0.1){
+    allScales.forEach(function(sc){
+      if(!sc.active||sc.muted||globalSilence) return;
+      curScIdx=sc.id;
+      var hits=getHits(sc), ch=sc.state===3;
+      hits.forEach(function(h){
+        if(h.s===sc.cycleStep){
+          var j=ch?(Math.random()-0.5)*step16()*0.25:0;
+          var t=nextT+j;
+          fireHit(h,t,ch);
+          schedPart(sc.id,h.t,Math.max(0,(t-actx.currentTime)*1000));
+        }
+      });
+      sc.cycleStep=(sc.cycleStep+1)%sc.pattern.steps;
+    });
+    if(gStep%16===0){
+      allScales.forEach(function(sc){
+        if(sc.queued&&!sc.active){ sc.active=true; sc.queued=false; sc.cycleStep=0; updateEl(sc); }
+      });
+      bar++; if(bar>999) bar=1;
+    }
+    beat=(gStep%16)+1;
+    document.getElementById('bctr').textContent=bar+'.'+beat;
+    gStep++; nextT+=step16();
+  }
+  sTimer=setTimeout(scheduler,20);
+}
+
+async function startPlay(){
+  await initAudio();
+  if(playing) return;
+  playing=true; gStep=0; bar=1; beat=1;
+  nextT=actx.currentTime+0.08;
+  scheduler();
+  document.getElementById('pbtn').classList.add('on');
+  drawPhase();
+}
+function stopPlay(){
+  playing=false; globalSilence=false; clearTimeout(sTimer);
+  allScales.forEach(function(sc){ sc.active=false; sc.queued=false; sc.cycleStep=0; sc.muted=false; });
+  gStep=0; bar=1; beat=1;
+  document.getElementById('bctr').textContent='1.1';
+  document.getElementById('pbtn').classList.remove('on');
+  document.getElementById('silbtn').classList.remove('sil');
+  cancelAnimationFrame(pRAF);
+  phCx.clearRect(0,0,phCv.width,phCv.height);
+  updateAllEls(); updateQInfo();
+}
+function toggleSilence(){
+  if(!playing) return;
+  globalSilence=!globalSilence;
+  document.getElementById('silbtn').classList.toggle('sil', globalSilence);
+  // flash mGain for visual feedback
+  if(globalSilence && actx){
+    mGain.gain.setTargetAtTime(0, actx.currentTime, 0.02);
+  } else if(actx){
+    mGain.gain.setTargetAtTime(0.72, actx.currentTime, 0.02);
+  }
+}
+function doRandom(){
+  initAudio();
+  // Stop everything first
+  allScales.forEach(function(sc){ sc.active=false; sc.queued=false; sc.cycleStep=0; sc.muted=false; sc.chaos=null; });
+  // Pick 2-5 random scales, avoiding duplicates per row
+  var rowIdxs=[0,1,2,3,4,5,6,7,8,9];
+  // shuffle rows
+  for(var i=rowIdxs.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=rowIdxs[i]; rowIdxs[i]=rowIdxs[j]; rowIdxs[j]=tmp; }
+  var pick=2+Math.floor(Math.random()*4); // 2-5 rows
+  rowIdxs.slice(0,pick).forEach(function(ri){
+    var rowScales=allScales.filter(function(s){return s.rowIdx===ri;});
+    var sc=rowScales[Math.floor(Math.random()*rowScales.length)];
+    sc.state=Math.floor(Math.random()*4);
+    if(sc.state===3) sc.chaos=null;
+    if(playing){ sc.queued=true; } else { sc.active=true; }
+  });
+  if(!playing){ startPlay(); } else { updateAllEls(); updateQInfo(); }
+  document.getElementById('dice-btn').classList.add('rnd');
+  setTimeout(function(){ document.getElementById('dice-btn').classList.remove('rnd'); }, 400);
+}
+
+// ═══════════════════ SVG ═══════════════════
+var SC=[
+  // off-state is very dark/flat; active gets the lit version via act flag
+  {fill:'#08090d',fill2:'#0d1018',stroke:'#253040',stroke2:'#b0bcd0',mid:'#1e2840',offStroke:'#1a2030'},
+  {fill:'#040e0c',fill2:'#081c18',stroke:'#005544',stroke2:'#00e5cc',mid:'#003830',offStroke:'#0a2020'},
+  {fill:'#0d0800',fill2:'#180e00',stroke:'#553300',stroke2:'#ffaa00',mid:'#3a2000',offStroke:'#201000'},
+  {fill:'#0d0010',fill2:'#160018',stroke:'#550040',stroke2:'#ff00aa',mid:'#38002a',offStroke:'#1e0018'},
+  {fill:'#070709',fill2:'#0c0c0f',stroke:'#222232',stroke2:'#2a2a38',mid:'#141420',offStroke:'#141420'},
+];
+function makeSVG(sc){
+  var ci=sc.muted?4:sc.state;
+  var c=SC[ci], w=78,h=68,id=sc.id;
+  var act=sc.active&&!sc.muted&&!globalSilence;
+  var isOff=!sc.active&&!sc.queued;
+  var bodyOpacity=isOff?'0.45':'1';
+  var strokeCol=isOff?c.offStroke:(sc.muted?'#1e1e28':c.stroke);
+  var fillOp0=isOff?'0.06':(sc.muted?'0.03':'0.18');
+  return '<svg viewBox="0 0 '+w+' '+h+'" width="'+w+'" height="'+h+'" xmlns="http://www.w3.org/2000/svg">'
+  +'<defs>'
+  +'<radialGradient id="g'+id+'" cx="50%" cy="22%" r="78%">'
+  +'<stop offset="0%" stop-color="'+c.stroke+'" stop-opacity="'+fillOp0+'"/>'
+  +'<stop offset="55%" stop-color="'+c.fill2+'" stop-opacity="0.97"/>'
+  +'<stop offset="100%" stop-color="'+c.fill+'" stop-opacity="1"/>'
+  +'</radialGradient>'
+  +'<radialGradient id="sh'+id+'" cx="40%" cy="18%" r="40%">'
+  +'<stop offset="0%" stop-color="'+c.stroke2+'" stop-opacity="'+(isOff||sc.muted?'0.0':'0.15')+'"/>'
+  +'<stop offset="100%" stop-color="'+c.stroke2+'" stop-opacity="0"/>'
+  +'</radialGradient>'
+  +'<clipPath id="cp'+id+'"><path d="M'+w*.5+' '+h*.96+'C'+w*.09+' '+h*.96+' '+w*.04+' '+h*.54+' '+w*.5+' '+h*.12+'C'+w*.96+' '+h*.54+' '+w*.91+' '+h*.96+' '+w*.5+' '+h*.96+'Z"/></clipPath>'
+  +(act?'<filter id="gf'+id+'"><feGaussianBlur stdDeviation="2" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>':'')
+  +'</defs>'
+  // body
+  +'<path d="M'+w*.5+' '+h*.96+'C'+w*.09+' '+h*.96+' '+w*.04+' '+h*.54+' '+w*.5+' '+h*.12+'C'+w*.96+' '+h*.54+' '+w*.91+' '+h*.96+' '+w*.5+' '+h*.96+'Z" fill="url(#g'+id+')" stroke="'+strokeCol+'" stroke-width="'+(act?'1.6':'1')+'" opacity="'+bodyOpacity+'"/>'
+  // ribs
+  +'<g clip-path="url(#cp'+id+')" opacity="'+(isOff||sc.muted?'0.04':'0.12')+'">'
+  +[.28,.4,.52,.64,.76,.88].map(function(t){ return '<ellipse cx="'+(w*.5)+'" cy="'+(h*t)+'" rx="'+(w*.42*(t-.09)/.9)+'" ry="'+(h*.012)+'" stroke="'+c.stroke+'" stroke-width="0.5" fill="none"/>'; }).join('')
+  +'</g>'
+  // sheen
+  +'<path d="M'+w*.5+' '+h*.96+'C'+w*.09+' '+h*.96+' '+w*.04+' '+h*.54+' '+w*.5+' '+h*.12+'C'+w*.96+' '+h*.54+' '+w*.91+' '+h*.96+' '+w*.5+' '+h*.96+'Z" fill="url(#sh'+id+')"/>'
+  // content
+  +(sc.muted
+    ?'<text x="'+(w*.5)+'" y="'+(h*.56)+'" text-anchor="middle" font-size="7" font-family="Space Mono,monospace" fill="#2a2a3a" letter-spacing="1">MUTE</text>'
+    :mkDots(sc,c,isOff))
+  // queued dashed ring
+  +(sc.queued&&!sc.muted?'<path d="M'+w*.5+' '+h*.96+'C'+w*.09+' '+h*.96+' '+w*.04+' '+h*.54+' '+w*.5+' '+h*.12+'C'+w*.96+' '+h*.54+' '+w*.91+' '+h*.96+' '+w*.5+' '+h*.96+'Z" fill="none" stroke="'+c.stroke2+'" stroke-width="1.3" opacity="0.55" stroke-dasharray="3 3"/>':'')
+  // active glow ring
+  +(act?'<path d="M'+w*.5+' '+h*.96+'C'+w*.09+' '+h*.96+' '+w*.04+' '+h*.54+' '+w*.5+' '+h*.12+'C'+w*.96+' '+h*.54+' '+w*.91+' '+h*.96+' '+w*.5+' '+h*.96+'Z" fill="none" stroke="'+c.stroke2+'" stroke-width="2.2" opacity="0.5" filter="url(#gf'+id+')"/>':'')
+  +'</svg>';
+}
+function mkDots(sc,c,isOff){
+  var pat=sc.pattern, n=Math.min(pat.steps,16);
+  var hits=getHits(sc);
+  var hitSet={};
+  hits.forEach(function(h){ hitSet[Math.floor(h.s/pat.steps*n)]=1; });
+  var d='',w=78,h=68;
+  var dimmed=isOff?0.25:1;
+  // dots sit ON the border curve — parametric points along the scale outline
+  for(var i=0;i<n;i++){
+    // Map i to a parameter t along the left+right arc of the scale shape
+    // The shape goes from tip (top) down both sides to base
+    // Use angle to place dots evenly around the perimeter arc
+    var t=i/n; // 0..1
+    // Use the same bezier as the shape: left side t=0..0.5, right side t=0.5..1
+    var angle, bx, by;
+    // Approximate border position: parametric arc around the scale silhouette
+    var a=(t*Math.PI*0.88)+Math.PI*0.06; // arc from ~10deg to ~170deg
+    // Scale shape roughly fits an ellipse: cx=39, tip at y=h*.12, base at y=h*.96
+    var ew=w*.44, eh=(h*.96-h*.12)/2, acy=h*.12+eh;
+    bx=w*.5+ew*Math.cos(Math.PI-a);
+    by=acy-eh*Math.sin(a)*0.95;
+    var on=hitSet[i];
+    if(on){
+      // bright filled dot with bloom
+      d+='<circle cx="'+bx+'" cy="'+by+'" r="2.8" fill="'+c.stroke2+'" opacity="'+dimmed+'"/>';
+      d+='<circle cx="'+bx+'" cy="'+by+'" r="5" fill="'+c.stroke+'" opacity="'+(0.18*dimmed)+'"/>';
+    } else {
+      d+='<circle cx="'+bx+'" cy="'+by+'" r="1.2" fill="'+c.mid+'" opacity="'+(0.35*dimmed)+'"/>';
+    }
+  }
+  // Step count small label — center of scale, well above base
+  d+='<text x="'+w*.5+'" y="'+(h*.46)+'" text-anchor="middle" font-size="5.5" font-family="Space Mono,monospace" fill="'+c.stroke2+'" opacity="'+(0.3*dimmed)+'">'+pat.steps+'</text>';
+  return d;
+}
+
+// ═══════════════════ DOM ═══════════════════
+function buildGrid(){
+  var grid=document.getElementById('grid');
+  grid.innerHTML='';
+  ROWS.forEach(function(row,ri){
+    var block=document.createElement('div'); block.className='row';
+    var lbl=document.createElement('div'); lbl.className='rlbl'; lbl.textContent=row.name;
+    block.appendChild(lbl);
+    var rscales=document.createElement('div'); rscales.className='rscales';
+    row.patterns.forEach(function(pat,pi){
+      var sc=allScales.filter(function(s){ return s.rowIdx===ri&&s.patIdx===pi; })[0];
+      var wrap=document.createElement('div'); wrap.className='sc';
+      wrap.innerHTML=makeSVG(sc); sc.el=wrap;
+      var nl=document.createElement('div'); nl.className='sclbl'; nl.textContent=pat.name;
+      wrap.appendChild(nl);
+      wrap.addEventListener('pointerdown',function(e){
+        e.preventDefault(); initAudio();
+        var now=Date.now(), dbl=(now-sc.lastTap)<300; sc.lastTap=now;
+        if(dbl){
+          sc.muted=!sc.muted;
+        } else {
+          if(sc.muted){ sc.muted=false; }
+          else {
+            sc.state=(sc.state+1)%4;
+            if(sc.state===3) sc.chaos=null;
+          }
+          if(playing&&!sc.active) sc.queued=true;
+        }
+        updateEl(sc); updateQInfo();
+        wrap.animate([{transform:'scale(1)'},{transform:'scale(1.06)'},{transform:'scale(1)'}],{duration:90,easing:'ease-out'});
+      });
+      rscales.appendChild(wrap);
+    });
+    block.appendChild(rscales);
+    grid.appendChild(block);
+  });
+  // Measure positions after layout
+  requestAnimationFrame(function(){
+    var gridEl=document.getElementById('grid');
+    var gr=gridEl.getBoundingClientRect();
+    allScales.forEach(function(sc){
+      if(sc.el){
+        var r=sc.el.getBoundingClientRect();
+        scalePos[sc.id]={x:r.left+r.width/2, y:r.top+r.height/2};
+      }
+    });
+  });
+}
+function updateEl(sc){
+  if(!sc.el) return;
+  sc.el.innerHTML=makeSVG(sc);
+  var nl=document.createElement('div'); nl.className='sclbl'; nl.textContent=sc.pattern.name;
+  sc.el.appendChild(nl);
+}
+function updateAllEls(){ allScales.forEach(updateEl); }
+function updateQInfo(){
+  var a=allScales.filter(function(s){return s.active&&!s.muted;}).length;
+  var q=allScales.filter(function(s){return s.queued;}).length;
+  document.getElementById('qinfo').textContent=a+' PLAYING'+(q?' · '+q+' QUEUED':'');
+}
+
+// ═══════════════════ PHASE STRIP ═══════════════════
+var LANE_COL=['#b0bcd0','#00e5cc','#ffaa00','#ff00aa','#7799ff','#ff7744','#44dd88','#ff44cc','#aaffee','#ffcc44'];
+function drawPhase(){
+  if(!playing) return;
+  var W=phCv.width, H=phCv.height;
+  phCx.clearRect(0,0,W,H);
+  phCx.fillStyle='#06060c'; phCx.fillRect(0,0,W,H);
+  var active=allScales.filter(function(s){return s.active&&!s.muted;});
+  var lh=active.length>0?Math.max(2,Math.min(7,(H-4)/active.length)):H;
+  active.forEach(function(sc,i){
+    var frac=sc.cycleStep/sc.pattern.steps;
+    var x=frac*W, y=2+i*lh;
+    var col=LANE_COL[sc.rowIdx%LANE_COL.length];
+    phCx.fillStyle='rgba(255,255,255,0.025)'; phCx.fillRect(0,y,W,lh-1);
+    phCx.fillStyle=col+'22'; phCx.fillRect(0,y,x,lh-1);
+    // hit markers
+    getHits(sc).forEach(function(h){
+      var hx=(h.s/sc.pattern.steps)*W;
+      phCx.fillStyle=col+'66'; phCx.fillRect(hx-0.5,y+lh*.25,1,lh*.5);
+    });
+    // playhead
+    phCx.fillStyle=col; phCx.fillRect(x-1.5,y,3,lh-1);
+  });
+  // master bar line
+  var mx=(gStep%16)/16*W;
+  phCx.strokeStyle='rgba(255,255,255,0.2)'; phCx.lineWidth=1;
+  phCx.setLineDash([2,4]); phCx.beginPath(); phCx.moveTo(mx,0); phCx.lineTo(mx,H); phCx.stroke(); phCx.setLineDash([]);
+  pRAF=requestAnimationFrame(drawPhase);
+}
+
+// ═══════════════════ PARTICLES ═══════════════════
+var HH={kick:215,snare:200,clap:210,hat:185,ohat:175,rim:225,tom:240,perc:190,cow:35,cym:195};
+var SHUE=[0,-18,28,-55,0], SSAT=[1,1.5,1.2,2,0];
+function Particle(x,y,ht,st){
+  this.x=x; this.y=y;
+  var a=Math.random()*Math.PI*2,sp=0.8+Math.random()*3;
+  this.vx=Math.cos(a)*sp; this.vy=Math.sin(a)*sp-0.9;
+  this.life=1; this.decay=0.014+Math.random()*0.02;
+  this.sz=1+Math.random()*2.8;
+  this.hue=(HH[ht]||200)+SHUE[st]+(Math.random()-.5)*22;
+  this.sat=Math.min(100,55*SSAT[st]);
+  this.tail=[]; this.tmax=ht==='kick'?5:ht==='snare'?4:2;
+  this.grav=ht==='kick'?0.05:0.025;
+}
+Particle.prototype.step=function(){
+  this.tail.push({x:this.x,y:this.y});
+  if(this.tail.length>this.tmax) this.tail.shift();
+  this.vx*=0.97; this.vy=this.vy*0.97+this.grav;
+  this.x+=this.vx; this.y+=this.vy; this.life-=this.decay;
+};
+Particle.prototype.draw=function(c){
+  if(this.life<=0) return;
+  var lum=55+this.life*25;
+  for(var i=0;i<this.tail.length;i++){
+    var pt=this.tail[i],al=(i/this.tail.length)*this.life*0.3;
+    c.beginPath(); c.arc(pt.x,pt.y,this.sz*0.35*(i/this.tail.length),0,Math.PI*2);
+    c.fillStyle='hsla('+this.hue+','+this.sat+'%,'+lum+'%,'+al+')'; c.fill();
+  }
+  c.beginPath(); c.arc(this.x,this.y,this.sz*this.life,0,Math.PI*2);
+  c.fillStyle='hsla('+this.hue+','+this.sat+'%,'+lum+'%,'+(this.life*0.85)+')'; c.fill();
+  c.beginPath(); c.arc(this.x,this.y,this.sz*this.life*2.5,0,Math.PI*2);
+  c.fillStyle='hsla('+this.hue+','+this.sat+'%,'+lum+'%,'+(this.life*0.04)+')'; c.fill();
+};
+function schedPart(scId,ht,delay){
+  setTimeout(function(){
+    var pos=scalePos[scId]; if(!pos) return;
+    var sc=allScales[scId];
+    var cnt=ht==='kick'?14:ht==='snare'?10:ht==='clap'?9:6;
+    for(var i=0;i<cnt;i++) particles.push(new Particle(pos.x+(Math.random()-.5)*36,pos.y+(Math.random()-.5)*28,ht,sc.muted?4:sc.state));
+  },delay);
+}
+function partLoop(){
+  pCx.clearRect(0,0,pCv.width,pCv.height);
+  particles=particles.filter(function(p){return p.life>0;});
+  particles.forEach(function(p){p.step();p.draw(pCx);});
+  requestAnimationFrame(partLoop);
+}
+
+// ═══════════════════ RESIZE & INIT ═══════════════════
+function resize(){
+  pCv.width=window.innerWidth; pCv.height=window.innerHeight;
+  phCv.width=phCv.offsetWidth; phCv.height=phCv.offsetHeight||32;
+}
+window.addEventListener('resize',function(){
+  resize();
+  requestAnimationFrame(function(){
+    allScales.forEach(function(sc){
+      if(sc.el){ var r=sc.el.getBoundingClientRect(); scalePos[sc.id]={x:r.left+r.width/2,y:r.top+r.height/2}; }
+    });
+  });
+});
+
+document.getElementById('bpm-slider').addEventListener('input',function(e){
+  bpm=parseInt(e.target.value);
+  document.getElementById('bpm-val').textContent=bpm;
+});
+document.getElementById('pbtn').addEventListener('click',startPlay);
+document.getElementById('silbtn').addEventListener('click',toggleSilence);
+document.getElementById('dice-btn').addEventListener('click',doRandom);
+
+resize();
+buildGrid();
+partLoop();
+updateQInfo();
+</script>
+</body>
+</html>
